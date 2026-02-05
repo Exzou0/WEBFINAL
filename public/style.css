@@ -261,3 +261,25 @@ td button {
     width: 100%;
   }
 }
+.pill {
+  font-size: 0.9rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eee;
+}
+.pillOk { background: #e7ffe7; }
+.pillWarn { background: #fff2cc; }
+
+.authForm .grid2{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 700px){
+  .authForm .grid2{ grid-template-columns: 1fr; }
+}
+
+.muted {
+  opacity: 0.7;
+  font-size: 0.95rem;
+}
