@@ -40,6 +40,9 @@ app.get('/about', (req, res) => {
 app.get('/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'contact.html'));
 });
+app.get('/auth', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'auth.html'));
+});
 
 
 
@@ -51,7 +54,8 @@ function requireAuth(req, res, next) {
 }
 
 app.post('/auth/register', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role } = req.body; 
+  
   if (!email || !password)
     return res.status(400).json({ error: 'Missing credentials' });
 
@@ -59,11 +63,27 @@ app.post('/auth/register', async (req, res) => {
   if (await users.findOne({ email }))
     return res.status(400).json({ error: 'User exists' });
 
+  const finalRole = (role === 'admin') ? 'admin' : 'user';
+
   const passwordHash = await bcrypt.hash(password, 10);
-  await users.insertOne({ email, passwordHash });
+  await users.insertOne({ 
+    email, 
+    passwordHash, 
+    role: finalRole
+  });
 
   res.status(201).json({ message: 'User created' });
 });
+
+async function requireAdmin(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const user = await getUsersCollection().findOne({ _id: new ObjectId(req.session.userId) });
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Admins only' });
+  }
+  next();
+}
 
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
@@ -80,13 +100,18 @@ app.post('/auth/logout', (req, res) => {
   req.session.destroy(() => res.json({ message: 'Logged out' }));
 });
 
-app.get('/auth/me', (req, res) => {
+app.get('/auth/me', async (req, res) => {
   if (!req.session.userId)
     return res.status(401).json({ user: null });
 
-  res.json({ user: req.session.userId });
-});
+  const user = await getUsersCollection().findOne({ _id: new ObjectId(req.session.userId) });
+  if (!user) return res.status(401).json({ user: null });
 
+  res.json({ 
+    user: user._id, 
+    role: user.role 
+  });
+});
 
 
 app.get('/api/products', async (req, res) => {
@@ -94,7 +119,7 @@ app.get('/api/products', async (req, res) => {
   res.json(products);
 });
 
-app.post('/api/products', requireAuth, async (req, res) => {
+app.post('/api/products', requireAdmin, async (req, res) => {
   const { name, price, brand, category, stock, description } = req.body;
 
   if (!name || price == null || !brand || !category || stock == null || !description)
@@ -108,7 +133,7 @@ app.post('/api/products', requireAuth, async (req, res) => {
   res.status(201).json({ id: result.insertedId });
 });
 
-app.put('/api/products/:id', requireAuth, async (req, res) => {
+app.put('/api/products/:id', requireAdmin, async (req, res) => {
   if (!ObjectId.isValid(req.params.id))
     return res.status(400).json({ error: 'Invalid id' });
 
@@ -120,7 +145,7 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
   res.json({ message: 'Updated' });
 });
 
-app.delete('/api/products/:id', requireAuth, async (req, res) => {
+app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   if (!ObjectId.isValid(req.params.id))
     return res.status(400).json({ error: 'Invalid id' });
 

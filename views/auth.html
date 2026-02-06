@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authentication - Electronics Store</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="/">Home</a>
+    </nav>
+
+    <section class="auth card">
+      <div class="row space">
+        <h2>Authentication</h2>
+        <div id="authState" class="pill">Checking...</div>
+      </div>
+
+      <form id="loginForm" class="authForm">
+        <div class="grid2">
+          <div>
+            <label for="email">Email</label>
+            <input id="email" type="email" placeholder="e.g. user@mail.com" required />
+          </div>
+          <div>
+            <label for="password">Password</label>
+            <input id="password" type="password" placeholder="••••••••" required />
+          </div>
+        </div>
+
+        <div>
+  <label for="role">Register as:</label>
+  <select id="role">
+    <option value="user">User</option>
+    <option value="admin">Admin</option>
+  </select>
+</div>
+
+        <div class="row">
+          <button type="submit" id="loginBtn">Login</button>
+          <button type="button" id="registerBtn" class="secondary" onclick="registerUser()">Register</button>
+          <button type="button" id="logoutBtn" class="secondary" style="display:none;">Logout</button>
+        </div>
+        <div id="authMsg" class="status" style="display:none;"></div>
+      </form>
+    </section>
+  </div>
+  <script src="/script.js"></script>
+</body>
+</html>

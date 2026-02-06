@@ -1,5 +1,5 @@
 (function () {
-
+  // Элементы управления товарами (Главная страница)
   const statusDiv = document.getElementById("status");
   const itemsBody = document.getElementById("itemsBody");
   const itemForm = document.getElementById("itemForm");
@@ -10,9 +10,8 @@
   const submitBtn = document.getElementById("submitBtn");
   const cancelBtn = document.getElementById("cancelBtn");
   const refreshBtn = document.getElementById("refreshBtn");
-  const registerBtn = document.getElementById("registerBtn");
 
-
+  // Элементы авторизации (Страница логина)
   const authState = document.getElementById("authState");
   const authMsg = document.getElementById("authMsg");
   const loginForm = document.getElementById("loginForm");
@@ -21,17 +20,16 @@
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  if (!itemsBody || !itemForm) return;
-
   let isAuthed = false;
 
+  // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
   function showMsg(el, msg, ok = true) {
     if (!el) return;
     el.textContent = msg;
     el.className = "status " + (ok ? "ok" : "err");
     el.style.display = "block";
-    setTimeout(() => (el.style.display = "none"), 3000);
+    setTimeout(() => { if (el) el.style.display = "none"; }, 3000);
   }
 
   function escapeHtml(str) {
@@ -49,117 +47,130 @@
       headers: { "Content-Type": "application/json" },
       ...options,
     });
-
     const text = await res.text();
     const data = text ? JSON.parse(text) : null;
-
-    if (!res.ok) {
-      throw new Error(data?.error || `HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
     return data;
   }
+
+  // --- ЛОГИКА АВТОРИЗАЦИИ ---
 
   function applyAuthUI(state) {
     isAuthed = state;
 
-    authState.textContent = state ? "Logged in" : "Guest";
-    authState.className = "pill " + (state ? "pillOk" : "pillWarn");
+    if (authState) {
+      authState.textContent = state ? "Logged in" : "Guest";
+      authState.className = "pill " + (state ? "pillOk" : "pillWarn");
+    }
 
-    loginBtn.style.display = state ? "none" : "inline-block";
-    logoutBtn.style.display = state ? "inline-block" : "none";
+    if (loginBtn) loginBtn.style.display = state ? "none" : "inline-block";
+    if (logoutBtn) logoutBtn.style.display = state ? "inline-block" : "none";
 
-    submitBtn.disabled = !state;
-    nameInput.disabled = !state;
-    priceInput.disabled = !state;
+    // Отключаем поля формы товара, если они есть на странице
+    if (submitBtn) submitBtn.disabled = !state;
+    if (nameInput) nameInput.disabled = !state;
+    if (priceInput) priceInput.disabled = !state;
 
     if (!state) resetForm();
   }
 
+let userRole = 'guest'; 
 
-  async function checkAuth() {
-    try {
-      await fetchJson("/auth/me");
-      applyAuthUI(true);
-    } catch {
-      applyAuthUI(false);
-    }
+async function checkAuth() {
+  try {
+    const data = await fetchJson("/auth/me");
+    userRole = data.role; 
+    applyAuthUI(true);
+  } catch {
+    userRole = 'guest';
+    applyAuthUI(false);
+  }
+}
+
+async function requireAdmin(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const user = await getUsersCollection().findOne({ _id: new ObjectId(req.session.userId) });
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Admins only.' });
+  }
+  next();
+}
+
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email.includes("@") || password.length < 6) {
+        showMsg(authMsg, "Invalid email or password (min 6 chars)", false);
+        return;
+      }
+
+      try {
+        loginBtn.disabled = true;
+        await fetchJson("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+
+        showMsg(authMsg, "Login successful! Redirecting...");
+        applyAuthUI(true);
+        
+        // Редирект на главную после логина
+        setTimeout(() => { window.location.href = "/"; }, 1000);
+      } catch (err) {
+        showMsg(authMsg, err.message, false);
+      } finally {
+        if (loginBtn) loginBtn.disabled = false;
+      }
+    });
   }
 
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      await fetchJson("/auth/logout", { method: "POST" });
+      applyAuthUI(false);
+      if (itemsBody) loadItems();
+    });
+  }
 
+const roleInput = document.getElementById("role");
+
+window.registerUser = async function () {
     const email = emailInput.value.trim();
     const password = passwordInput.value;
+    const role = roleInput ? roleInput.value : "user"; 
 
-    if (!email.includes("@")) {
-      showMsg(authMsg, "Invalid email", false);
-      return;
-    }
-    if (password.length < 6) {
-      showMsg(authMsg, "Password min 6 chars", false);
-      return;
-    }
-
-    try {
-      loginBtn.disabled = true;
-
-      await fetchJson("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-
-      showMsg(authMsg, "Login successful");
-      applyAuthUI(true);
-      loadItems();
-    } catch (err) {
-      showMsg(authMsg, err.message, false);
-    } finally {
-      loginBtn.disabled = false;
-    }
-  });
-
-  logoutBtn.addEventListener("click", async () => {
-    await fetchJson("/auth/logout", { method: "POST" });
-    applyAuthUI(false);
-    loadItems();
-  });
-
-
-  window.registerUser = async function () {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-
-    if (!email.includes("@")) {
-      showMsg(authMsg, "Invalid email", false);
-      return;
-    }
-    if (password.length < 6) {
-      showMsg(authMsg, "Password min 6 chars", false);
+    if (!email.includes("@") || password.length < 6) {
+      showMsg(authMsg, "Invalid email or password", false);
       return;
     }
 
     try {
       await fetchJson("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role }),
       });
 
-      // auto-login
       await fetchJson("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
 
-      showMsg(authMsg, "Registered & logged in");
+      showMsg(authMsg, "Registered as " + role + "! Redirecting...");
       applyAuthUI(true);
-      loadItems();
+      setTimeout(() => { window.location.href = "/"; }, 1000);
     } catch (err) {
       showMsg(authMsg, err.message, false);
     }
-  };
+};
 
+  // --- ЛОГИКА ТОВАРОВ ---
 
   function renderItems(items) {
+    if (!itemsBody) return;
     itemsBody.innerHTML = "";
 
     if (!items.length) {
@@ -167,28 +178,28 @@
       return;
     }
 
-    for (const item of items) {
-      const id = item._id;
-      const tr = document.createElement("tr");
 
-      tr.innerHTML = `
-        <td>${id}</td>
-        <td>${escapeHtml(item.name)}</td>
-        <td>${item.price}</td>
-        <td>
-          ${
-            isAuthed
-              ? `<button data-edit="${id}">Edit</button>
-                 <button class="danger" data-del="${id}">Delete</button>`
-              : `<span class="muted">Login required</span>`
-          }
-        </td>
-      `;
-      itemsBody.appendChild(tr);
-    }
+for (const item of items) {
+  const id = item._id;
+  const tr = document.createElement("tr");
+  
+  const actionButtons = userRole === 'admin' 
+    ? `<button data-edit="${id}">Edit</button> 
+       <button class="danger" data-del="${id}">Delete</button>`
+    : `<span class="muted">View only</span>`;
+
+  tr.innerHTML = `
+    <td>${id}</td>
+    <td>${escapeHtml(item.name)}</td>
+    <td>${item.price}</td>
+    <td>${actionButtons}</td>
+  `;
+  itemsBody.appendChild(tr);
+}
   }
 
   async function loadItems() {
+    if (!itemsBody) return;
     try {
       const items = await fetchJson("/api/products");
       renderItems(items);
@@ -197,82 +208,73 @@
     }
   }
 
-  itemForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  if (itemForm) {
+    itemForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!isAuthed) return;
 
-    if (!isAuthed) return;
+      const name = nameInput.value.trim();
+      const price = Number(priceInput.value);
 
-    const name = nameInput.value.trim();
-    const price = Number(priceInput.value);
-
-    if (!name || price <= 0) {
-      showMsg(statusDiv, "Invalid data", false);
-      return;
-    }
-
-    try {
-      if (!itemIdInput.value) {
-        await fetchJson("/api/products", {
-          method: "POST",
-          body: JSON.stringify({
-            name,
-            price,
-            brand: "Generic",
-            category: "Electronics",
-            stock: 1,
-            description: "N/A",
-          }),
-        });
-        showMsg(statusDiv, "Created");
-      } else {
-        await fetchJson(`/api/products/${itemIdInput.value}`, {
-          method: "PUT",
-          body: JSON.stringify({ name, price }),
-        });
-        showMsg(statusDiv, "Updated");
+      try {
+        if (!itemIdInput.value) {
+          await fetchJson("/api/products", {
+            method: "POST",
+            body: JSON.stringify({ name, price, brand: "Generic", category: "Electronics", stock: 1, description: "N/A" }),
+          });
+          showMsg(statusDiv, "Created");
+        } else {
+          await fetchJson(`/api/products/${itemIdInput.value}`, {
+            method: "PUT",
+            body: JSON.stringify({ name, price }),
+          });
+          showMsg(statusDiv, "Updated");
+        }
+        resetForm();
+        loadItems();
+      } catch (err) {
+        showMsg(statusDiv, err.message, false);
       }
-
-      resetForm();
-      loadItems();
-    } catch (err) {
-      showMsg(statusDiv, err.message, false);
-    }
-  });
-
-  itemsBody.addEventListener("click", async (e) => {
-    const editId = e.target.dataset.edit;
-    const delId = e.target.dataset.del;
-
-    if (editId) {
-      const row = e.target.closest("tr");
-      itemIdInput.value = editId;
-      nameInput.value = row.children[1].textContent;
-      priceInput.value = row.children[2].textContent;
-      formTitle.textContent = "Update Product";
-      submitBtn.textContent = "Update";
-      cancelBtn.style.display = "inline-block";
-    }
-
-    if (delId && confirm("Delete product?")) {
-      await fetchJson(`/api/products/${delId}`, { method: "DELETE" });
-      loadItems();
-    }
-  });
-
-  function resetForm() {
-    itemIdInput.value = "";
-    nameInput.value = "";
-    priceInput.value = "";
-    formTitle.textContent = "Create Product";
-    submitBtn.textContent = "Create";
-    cancelBtn.style.display = "none";
+    });
   }
 
-  cancelBtn.addEventListener("click", resetForm);
-  refreshBtn.addEventListener("click", loadItems);
+  if (itemsBody) {
+    itemsBody.addEventListener("click", async (e) => {
+      const editId = e.target.dataset.edit;
+      const delId = e.target.dataset.del;
 
+      if (editId) {
+        const row = e.target.closest("tr");
+        itemIdInput.value = editId;
+        nameInput.value = row.children[1].textContent;
+        priceInput.value = row.children[2].textContent;
+        formTitle.textContent = "Update Product";
+        submitBtn.textContent = "Update";
+        cancelBtn.style.display = "inline-block";
+      }
+
+      if (delId && confirm("Delete product?")) {
+        await fetchJson(`/api/products/${delId}`, { method: "DELETE" });
+        loadItems();
+      }
+    });
+  }
+
+  function resetForm() {
+    if (itemIdInput) itemIdInput.value = "";
+    if (nameInput) nameInput.value = "";
+    if (priceInput) priceInput.value = "";
+    if (formTitle) formTitle.textContent = "Create Product";
+    if (submitBtn) submitBtn.textContent = "Create";
+    if (cancelBtn) cancelBtn.style.display = "none";
+  }
+
+  if (cancelBtn) cancelBtn.addEventListener("click", resetForm);
+  if (refreshBtn) refreshBtn.addEventListener("click", loadItems);
+
+  // --- ИНИЦИАЛИЗАЦИЯ ---
   (async function init() {
     await checkAuth();
-    await loadItems();
+    if (itemsBody) await loadItems();
   })();
 })();
