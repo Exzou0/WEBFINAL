@@ -1,13 +1,22 @@
 //
-require('dotenv').config();
+require('dotenv').config({ override: true });
+
+//
+console.log('ENV CHECK MONGO_URI =', process.env.MONGO_URI);
+
+
 
 
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+//
+const bcrypt = require('bcrypt');
+const session = require('express-session');
 // NUR
 const { ObjectId } = require('mongodb');
-const { connectDB, getItemsCollection } = require('./db');
+const { connectDB, getProductsCollection, getUsersCollection } = require('./db');
+
 
 
 const app = express();
@@ -31,6 +40,17 @@ connectDB()
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
+//
+app.use(
+  session({
+    secret: 'secret123', 
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true
+    }
+  })
+);
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
@@ -101,107 +121,125 @@ function validateItemBody(body) {
 }
 
 
+//
+function requireAuth(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+
+// LOGIN
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password)
+    return res.status(400).json({ error: 'Missing credentials' });
+
+  const user = await getUsersCollection().findOne({ email });
+  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+
+  req.session.userId = user._id;
+  res.status(200).json({ message: 'Logged in' });
+});
+
+// LOGOUT
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.status(200).json({ message: 'Logged out' });
+  });
+});
+
 // ===== CRUD API /api/items =====
 
 // GET all items
-app.get('/api/items', async (req, res) => {
-  try {
-    const items = await getItemsCollection().find({}).toArray();
-    res.status(200).json(items);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+app.get('/api/products', async (req, res) => {
+  const products = await getProductsCollection().find({}).toArray();
+  res.status(200).json(products);
 });
+
 
 // GET item by id
-app.get('/api/items/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
+app.get('/api/products/:id', async (req, res) => {
+  const { id } = req.params;
 
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid id' });
-    }
+  if (!ObjectId.isValid(id))
+    return res.status(400).json({ error: 'Invalid id' });
 
-    const item = await getItemsCollection().findOne({ _id: new ObjectId(id) });
+  const product = await getProductsCollection()
+    .findOne({ _id: new ObjectId(id) });
 
-    if (!item) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
+  if (!product)
+    return res.status(404).json({ error: 'Product not found' });
 
-    res.status(200).json(item);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  res.status(200).json(product);
 });
+
 
 // CREATE item
-app.post('/api/items', async (req, res) => {
-  try {
-    const { name, price } = req.body;
+app.post('/api/products', requireAuth, async (req, res) => {
+  const { name, price, brand, category, stock, description } = req.body;
 
-    if (!name || price === undefined) {
-      return res.status(400).json({ error: 'Missing fields' });
-    }
+  if (!name || price === undefined || !brand || !category || stock === undefined || !description)
+    return res.status(400).json({ error: 'Missing fields' });
 
-    const result = await getItemsCollection().insertOne({
-      name,
-      price,
-      createdAt: new Date()
-    });
+  const result = await getProductsCollection().insertOne({
+    name, price, brand, category, stock, description,
+    createdAt: new Date()
+  });
 
-    res.status(201).json({ id: result.insertedId });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  res.status(201).json({ id: result.insertedId });
 });
+
 
 // UPDATE item
-app.put('/api/items/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, price } = req.body;
+app.put('/api/products/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
 
-    if (!ObjectId.isValid(id) || !name || price === undefined) {
-      return res.status(400).json({ error: 'Invalid data' });
-    }
+  if (!ObjectId.isValid(id))
+    return res.status(400).json({ error: 'Invalid id' });
 
-    const result = await getItemsCollection().updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { name, price } }
-    );
+  const result = await getProductsCollection().updateOne(
+    { _id: new ObjectId(id) },
+    { $set: req.body }
+  );
 
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
+  if (result.matchedCount === 0)
+    return res.status(404).json({ error: 'Product not found' });
 
-    res.status(200).json({ message: 'Item updated' });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  res.status(200).json({ message: 'Updated' });
 });
+
 
 // DELETE item
-app.delete('/api/items/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
+app.delete('/api/products/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
 
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid id' });
-    }
+  if (!ObjectId.isValid(id))
+    return res.status(400).json({ error: 'Invalid id' });
 
-    const result = await getItemsCollection().deleteOne({ _id: new ObjectId(id) });
+  const result = await getProductsCollection()
+    .deleteOne({ _id: new ObjectId(id) });
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
+  if (result.deletedCount === 0)
+    return res.status(404).json({ error: 'Product not found' });
 
-    res.status(200).json({ message: 'Item deleted' });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  res.status(200).json({ message: 'Deleted' });
 });
 
 
+app.post('/api/register', async (req, res) => {
+  const { email, password } = req.body;
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await getUsersCollection().insertOne({ email, passwordHash });
+
+  res.status(201).json({ message: 'User created' });
+});
 
 // API 404
 app.use('/api', (req, res) => {
