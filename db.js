@@ -6,7 +6,7 @@ let usersCollection;
 async function connectDB() {
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
-  const DB_NAME = 'electronics_store';         // ← просто имя БД
+  const DB_NAME = 'electronics_store';         
 
   if (!MONGO_URI) throw new Error('MONGODB_URI is not set');
 

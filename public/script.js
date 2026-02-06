@@ -1,5 +1,4 @@
 (function () {
-  // Элементы управления товарами (Главная страница)
   const statusDiv = document.getElementById("status");
   const itemsBody = document.getElementById("itemsBody");
   const itemForm = document.getElementById("itemForm");
@@ -11,7 +10,7 @@
   const cancelBtn = document.getElementById("cancelBtn");
   const refreshBtn = document.getElementById("refreshBtn");
 
-  // Элементы авторизации (Страница логина)
+
   const authState = document.getElementById("authState");
   const authMsg = document.getElementById("authMsg");
   const loginForm = document.getElementById("loginForm");
@@ -22,7 +21,6 @@
 
   let isAuthed = false;
 
-  // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
   function showMsg(el, msg, ok = true) {
     if (!el) return;
@@ -53,7 +51,7 @@
     return data;
   }
 
-  // --- ЛОГИКА АВТОРИЗАЦИИ ---
+
 
   function applyAuthUI(state) {
     isAuthed = state;
@@ -66,7 +64,6 @@
     if (loginBtn) loginBtn.style.display = state ? "none" : "inline-block";
     if (logoutBtn) logoutBtn.style.display = state ? "inline-block" : "none";
 
-    // Отключаем поля формы товара, если они есть на странице
     if (submitBtn) submitBtn.disabled = !state;
     if (nameInput) nameInput.disabled = !state;
     if (priceInput) priceInput.disabled = !state;
@@ -167,7 +164,7 @@ window.registerUser = async function () {
     }
 };
 
-  // --- ЛОГИКА ТОВАРОВ ---
+
 
   function renderItems(items) {
     if (!itemsBody) return;
@@ -272,7 +269,7 @@ for (const item of items) {
   if (cancelBtn) cancelBtn.addEventListener("click", resetForm);
   if (refreshBtn) refreshBtn.addEventListener("click", loadItems);
 
-  // --- ИНИЦИАЛИЗАЦИЯ ---
+
   (async function init() {
     await checkAuth();
     if (itemsBody) await loadItems();
