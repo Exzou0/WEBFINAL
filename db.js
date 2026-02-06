@@ -1,27 +1,38 @@
 const { MongoClient } = require('mongodb');
 
-let itemsCollection;
+let productsCollection;
+let usersCollection;
 
 async function connectDB() {
-  const MONGO_URI = process.env.MONGO_URI;
-  const DB_NAME = process.env.MONGO_DB_NAME || 'assignment3';
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
-  if (!MONGO_URI) {
-    throw new Error('MONGO_URI is not set');
-  }
+  const DB_NAME = 'electronics_store';         // ← просто имя БД
+
+  if (!MONGO_URI) throw new Error('MONGODB_URI is not set');
 
   const client = new MongoClient(MONGO_URI);
   await client.connect();
 
   const db = client.db(DB_NAME);
-  itemsCollection = db.collection('items');
+
+  productsCollection = db.collection('products');
+  usersCollection = db.collection('users');
 
   console.log('MongoDB connected');
 }
 
-function getItemsCollection() {
-  if (!itemsCollection) throw new Error('MongoDB not initialized');
-  return itemsCollection;
+function getProductsCollection() {
+  if (!productsCollection) throw new Error('DB not initialized');
+  return productsCollection;
 }
 
-module.exports = { connectDB, getItemsCollection };
+function getUsersCollection() {
+  if (!usersCollection) throw new Error('DB not initialized');
+  return usersCollection;
+}
+
+module.exports = {
+  connectDB,
+  getProductsCollection,
+  getUsersCollection
+};
