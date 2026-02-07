@@ -18,6 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+app.set('trust proxy', 1);
 app.use(session({
   secret: process.env.SESSION_SECRET || 'dev_secret',
   resave: false,
