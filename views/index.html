@@ -1,99 +1,178 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Electronics Store</title>
-  <link rel="stylesheet" href="/style.css" />
+  <title>ElectroTech Store | Premium Gadgets</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/aos@next/dist/aos.css" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Electronics store</h1>
 
-    <p class="description">
-      This online gadget shop provides a convenient way to browse and purchase the latest tech devices.
-      Users can explore a wide catalog of gadgets, compare specifications, read reviews,
-      and place orders quickly and easily.
-    </p>
-
-    <section class="team">
-      <h2>Team Members</h2>
-      <ul>
-        <li>Mansur Ryskali</li>
-        <li>Erasyl Meirambekov</li>
-        <li>Nurbek Shagarbek</li>
-      </ul>
-    </section>
-
-    <section class="features">
-      <h2>Planned Features</h2>
-      <ul>
-        <li>Gadget catalog with filters (price, brand, category)</li>
-        <li>Product page with detailed specs, reviews, and image gallery</li>
-        <li>Shopping cart and checkout system</li>
-        <li>User authentication (sign up / login)</li>
-        <li>Website wide search</li>
-        <li>Favorites list for saved items</li>
-      </ul>
-    </section>
-
-
-    <section class="crud">
-      <h2>PRODUCTS</h2>
-
-      <div id="status" class="status" style="display:none;"></div>
-
-      <div class="card">
-        <h3 id="formTitle">Create Item</h3>
-
-        <form id="itemForm">
-          <input type="hidden" id="itemId" />
-
-          <label for="name">Name</label>
-          <input id="name" type="text" placeholder="e.g. iPhone 15" required />
-
-          <label for="price">Price</label>
-          <input id="price" type="number" step="0.01" placeholder="e.g. 499999" required />
-
-          <div class="row">
-            <button type="submit" id="submitBtn">Create</button>
-            <button type="button" id="cancelBtn" class="secondary" style="display:none;">Cancel</button>
-          </div>
-        </form>
+  <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <div class="container">
+      <a class="navbar-brand text-uppercase" href="/">ElectroTech</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav align-items-center">
+          <li class="nav-item dropdown ms-2">
+            <button class="btn btn-link nav-link dropdown-toggle shadow-none" id="langToggle" data-bs-toggle="dropdown">
+              <span id="currentLang">RU</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="changeLanguage('ru')">RU - Русский</a></li>
+              <li><a class="dropdown-item" href="#" onclick="changeLanguage('en')">EN - English</a></li>
+              <li><a class="dropdown-item" href="#" onclick="changeLanguage('kz')">KZ - Қазақша</a></li>
+            </ul>
+          </li>
+          <li class="nav-item me-2">
+            <button id="themeToggle" class="btn btn-link nav-link shadow-none" title="Toggle Theme">
+              <span id="themeIcon">🌙</span>
+            </button>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="#" onclick="hideProfile(); return false;" data-lang="catalog">Каталог</a></li>
+          <li class="nav-item"><a id="profileLink" class="nav-link" href="javascript:void(0)" onclick="showProfile()" style="color: #007bff;" data-lang="profile">Личный кабинет</a></li>
+          <li class="nav-item"><span id="authState" class="nav-link px-3 text-info">Checking...</span></li>
+          <li class="nav-item"><a id="loginBtn" class="btn btn-outline-primary ms-lg-3" href="/auth" data-lang="login">Войти</a></li>
+          <li class="nav-item"><button id="logoutBtn" class="btn btn-outline-danger ms-lg-3" style="display:none;" data-lang="logout">Выйти</button></li>
+        </ul>
       </div>
+    </div>
+  </nav>
 
+  <header class="hero" id="heroSection">
+    <div class="container" data-aos="zoom-in">
+      <h1 class="display-3 fw-bold mb-3" data-lang="heroTitle">Будущее электроники уже здесь</h1>
+      <p class="lead text-muted mb-4" data-lang="heroSub">Премиальные гаджеты с гарантией качества и безопасности</p>
+      <a href="#catalogSection" class="btn btn-primary btn-lg px-5 py-3 shadow" data-lang="viewCatalog">Смотреть каталог</a>
+    </div>
+  </header>
 
-      <div class="card">
-        <div class="row space">
-          <h3>Items List</h3>
-          <button id="refreshBtn" class="secondary" type="button">Refresh</button>
+<section id="profileSection" class="container py-5" style="display:none; margin-top: 40px;">
+    <div class="filter-panel shadow-lg">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold m-0" data-lang="profileSettings">Настройки профиля</h2>
+            <button class="btn btn-outline-secondary btn-sm" onclick="hideProfile()" data-lang="backToStore">← Вернуться в магазин</button>
         </div>
+        
+        <form id="profileForm">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label" data-lang="emailLabel">Ваш Email</label>
+                    <input type="email" id="profileEmail" class="form-control" required>
+                    <div class="form-text text-muted" data-lang="emailHelp">Используется для входа в систему.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" data-lang="passwordLabel">Сменить пароль</label>
+                    <input type="password" id="profilePassword" class="form-control" placeholder="Новый пароль">
+                    <div class="form-text text-muted" data-lang="passwordHelp">Оставьте пустым, если не хотите менять.</div>
+                </div>
+                <div class="col-12 border-top border-secondary pt-4 mt-4 text-end">
+                    <button type="submit" class="btn btn-primary px-5" data-lang="saveChanges">Сохранить изменения</button>
+                </div>
+            </div>
+        </form>
+        <div class="alert alert-info mt-4 py-2 small" style="background: rgba(0,123,255,0.1); border: none; color: #72b1ff;" data-lang="securityNotice">
+            Безопасность: Вы можете редактировать только собственные данные.
+        </div>
+    </div>
+</section>
 
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 260px;">ID</th>
-              <th>Name</th>
-              <th style="width: 140px;">Price</th>
-              <th style="width: 220px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="itemsBody">
-            <tr><td colspan="4">Loading...</td></tr>
-          </tbody>
-        </table>
+  <main class="container py-5" id="catalogSection">
+    <div class="d-flex justify-content-between align-items-center mb-4" data-aos="fade-up">
+      <h2 class="fw-bold" data-lang="ourProducts">Наши товары</h2>
+      <div id="adminActions" style="display:none;">
+          <button class="btn btn-success px-4" onclick="showCreateForm()" data-lang="addProduct">+ Add Product</button>
       </div>
-    </section>
+    </div>
 
+    <div class="filter-panel mb-5" data-aos="fade-up">
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label class="form-label" data-lang="searchLabel">Поиск</label>
+          <input type="text" id="searchInput" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" data-lang="categoryLabel">Категория</label>
+          <select id="categoryFilter" class="form-select">
+            <option value="" data-lang="allCats">Все категории</option>
+            <option value="Laptops">Laptops</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Phones">Phones</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" data-lang="sortLabel">Сортировка</label>
+          <select id="sortOrder" class="form-select">
+            <option value="newest" data-lang="sortNew">Сначала новые</option>
+            <option value="cheap" data-lang="sortCheap">Сначала дешевые</option>
+            <option value="expensive" data-lang="sortExpensive">Сначала дорогие</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row g-4" id="itemsBody" data-aos="fade-up"></div>
+  </main>
 
-    <nav class="nav">
-      <a href="/">Home</a>
-      <a href="/auth">Login / Register</a>
-      <a href="/about">About</a>
-      <a href="/contact">Contact</a>
-    </nav>
-  </div>
+<div id="adminFormBlock" class="container mb-5 shadow-lg" style="display:none; background: #1c1c1e; padding: 30px; border-radius: 15px; border: 1px solid #333;">
+    <h3 id="formTitle" class="mb-4" data-lang="addItemTitle">Управление товаром</h3>
+    <form id="itemForm">
+      <input type="hidden" id="itemId"> 
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" data-lang="itemName">Название товара *</label>
+          <input id="name" type="text" class="form-control" data-lang="itemNamePlaceholder" placeholder="Например: MacBook Pro 14" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" data-lang="itemPrice">Цена (₸) *</label>
+          <input id="price" type="number" class="form-control" data-lang="itemPricePlaceholder" placeholder="Цена в тенге" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" data-lang="itemBrand">Бренд</label>
+          <input id="brand" type="text" class="form-control" data-lang="itemBrandPlaceholder" placeholder="Apple, Samsung...">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" data-lang="itemCategory">Категория</label>
+          <select id="category" class="form-select">
+            <option value="Laptops">Laptops</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Phones">Phones</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" data-lang="itemStock">Количество (Stock)</label>
+          <input id="stock" type="number" class="form-control" value="1">
+        </div>
+        <div class="col-md-12">
+          <label class="form-label" data-lang="itemImage">URL изображения</label>
+          <input id="imageUrl" type="text" class="form-control" data-lang="itemImagePlaceholder" placeholder="https://image-link.com/photo.jpg">
+        </div>
+        <div class="col-md-12">
+          <label class="form-label" data-lang="itemDesc">Описание</label>
+          <textarea id="description" class="form-control" rows="3" data-lang="itemDescPlaceholder" placeholder="Краткое описание характеристик..."></textarea>
+        </div>
+        <div class="col-md-12 d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary px-5" data-lang="saveChanges">Сохранить изменения</button>
+          <button type="button" id="cancelBtn" class="btn btn-outline-secondary" data-lang="cancelBtn">Отмена</button>
+        </div>
+      </div>
+    </form>
+</div>
 
+  <footer class="py-4 border-top border-secondary mt-5">
+    <div class="container text-center text-muted small">
+      <p>&copy; 2026 ElectroTech Store. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+  <script>AOS.init({ duration: 800, once: true });</script>
   <script src="/script.js"></script>
 </body>
 </html>
